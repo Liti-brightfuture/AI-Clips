@@ -58,6 +58,9 @@ def generate_script(
         import config  # lazy import — only needed in production
         client = OpenAI(api_key=config.OPENAI_API_KEY)
 
+    if command not in ("money", "b2b"):
+        raise ValueError(f"Unknown command: {command!r}. Expected 'money' or 'b2b'.")
+
     if command == "money":
         prompt = MONEY_SYSTEM_PROMPT.format(topic=topic)
         required_fields = REQUIRED_MONEY_FIELDS
@@ -73,15 +76,24 @@ def generate_script(
             response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content
+    except Exception as e:
+        raise ScriptError(f"GPT-4o API call failed: {e}") from e
+
+    try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, Exception) as e:
+    except json.JSONDecodeError as e:
         raise ScriptError(f"GPT-4o returned invalid JSON: {e}") from e
 
     missing = required_fields - set(data.keys())
     if missing:
         raise ScriptError(f"GPT-4o response missing fields: {missing}")
 
-    if not isinstance(data.get("pexels_keywords"), list) or len(data["pexels_keywords"]) != 3:
-        raise ScriptError("pexels_keywords must be a list of 3 strings")
+    keywords = data.get("pexels_keywords")
+    if (
+        not isinstance(keywords, list)
+        or len(keywords) != 3
+        or not all(isinstance(k, str) and k for k in keywords)
+    ):
+        raise ScriptError("pexels_keywords must be a list of 3 non-empty strings")
 
     return data
