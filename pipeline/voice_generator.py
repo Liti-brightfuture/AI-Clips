@@ -51,12 +51,17 @@ def generate_voice(
         client = ElevenLabs(api_key=config.ELEVENLABS_API_KEY)
         voice_id = config.ELEVENLABS_VOICE_ID
 
+    if voice_id is None:
+        raise VoiceError("voice_id must be provided when supplying a custom client.")
+
     script_len = len(script.encode("utf-8"))
 
     conn = sqlite3.connect(db_path)
     try:
         current, month = _get_and_init_usage(conn)
 
+        # Count chars pre-call for limit checks, but only record usage after a successful API call.
+        # This avoids charging the budget for failed requests.
         if current + script_len > ELEVENLABS_HARD_LIMIT:
             raise VoiceError(
                 f"ElevenLabs monthly limit reached ({current}/{ELEVENLABS_HARD_LIMIT} chars used). "

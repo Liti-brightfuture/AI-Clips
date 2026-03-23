@@ -26,7 +26,7 @@ def test_generate_voice_writes_file(tmp_path):
     mock_client = MagicMock()
     mock_client.text_to_speech.convert.return_value = [b"fake_audio_data"]
 
-    generate_voice("Hello world", str(output_path), str(db_path), client=mock_client)
+    generate_voice("Hello world", str(output_path), str(db_path), client=mock_client, voice_id="test-voice-id")
     assert output_path.exists()
     assert output_path.read_bytes() == b"fake_audio_data"
 
@@ -39,7 +39,7 @@ def test_chars_tracked_in_db(tmp_path):
     mock_client.text_to_speech.convert.return_value = [b"data"]
 
     script = "Hello world"
-    generate_voice(script, str(output_path), str(db_path), client=mock_client)
+    generate_voice(script, str(output_path), str(db_path), client=mock_client, voice_id="test-voice-id")
 
     conn = sqlite3.connect(db_path)
     row = conn.execute("SELECT chars_used FROM usage").fetchone()
@@ -60,7 +60,7 @@ def test_hard_limit_raises_voice_error(tmp_path):
 
     mock_client = MagicMock()
     with pytest.raises(VoiceError, match="monthly limit"):
-        generate_voice("Hello world this is a long script", str(tmp_path / "v.mp3"), str(db_path), client=mock_client)
+        generate_voice("Hello world this is a long script", str(tmp_path / "v.mp3"), str(db_path), client=mock_client, voice_id="test-voice-id")
 
 
 def test_warning_threshold_does_not_block(tmp_path):
@@ -76,5 +76,5 @@ def test_warning_threshold_does_not_block(tmp_path):
     mock_client = MagicMock()
     mock_client.text_to_speech.convert.return_value = [b"data"]
     # Should not raise, but should return warning message
-    warning = generate_voice("Short script.", str(tmp_path / "v.mp3"), str(db_path), client=mock_client)
+    warning = generate_voice("Short script.", str(tmp_path / "v.mp3"), str(db_path), client=mock_client, voice_id="test-voice-id")
     assert warning is not None  # warning message returned
