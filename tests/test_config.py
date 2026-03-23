@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+from unittest.mock import patch
 
 
 FULL_ENV = {
@@ -36,8 +37,10 @@ def test_missing_var_exits(monkeypatch):
     if "config" in sys.modules:
         del sys.modules["config"]
     try:
-        with pytest.raises(SystemExit):
-            import config
+        # Patch load_dotenv to no-op so the .env file on disk doesn't repopulate deleted vars
+        with patch("dotenv.load_dotenv"):
+            with pytest.raises(SystemExit):
+                import config
     finally:
         sys.modules.pop("config", None)  # always clean up to avoid contaminating other tests
 
