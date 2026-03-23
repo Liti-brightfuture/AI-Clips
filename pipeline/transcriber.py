@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +41,8 @@ def transcribe(audio_path: str, output_dir: str) -> str:
     Raises:
         TranscribeError: On any failure. Caught by the queue worker (non-fatal).
     """
-    from pipeline.exceptions import TranscribeError
     try:
+        from pipeline.exceptions import TranscribeError
         model = _load_model()
         result = model.transcribe(audio_path)
         segments = result.get("segments", [])
