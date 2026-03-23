@@ -20,13 +20,15 @@ def test_fetch_clips_returns_three_files(tmp_path):
     keywords = ["AI tools", "laptop", "typing"]
 
     mock_search = MagicMock(return_value=make_pexels_response([make_video()]))
-    mock_download = MagicMock(return_value=str(tmp_path / "clip_0.mp4"))
+    paths_returned = [str(tmp_path / f"clip_{i}.mp4") for i in range(3)]
+    mock_download = MagicMock(side_effect=paths_returned)
 
     with patch("pipeline.video_fetcher._search_pexels", mock_search), \
          patch("pipeline.video_fetcher._download_clip", mock_download):
         paths = fetch_clips(keywords, str(tmp_path), command="money")
 
     assert len(paths) == 3
+    assert len(set(paths)) == 3  # all distinct
     assert mock_search.call_count == 3
 
 
@@ -66,3 +68,15 @@ def test_selects_video_with_width_gte_1080(tmp_path):
     ]
     selected = _select_best_video(videos)
     assert selected["video_files"][0]["link"] == "http://example.com/hd.mp4"
+
+
+def test_raises_on_empty_video_files(tmp_path):
+    from pipeline.video_fetcher import fetch_clips
+    from pipeline.exceptions import VideoFetchError
+
+    empty_files_video = {"width": 1920, "duration": 15, "video_files": []}
+    mock_search = MagicMock(return_value=make_pexels_response([empty_files_video]))
+
+    with patch("pipeline.video_fetcher._search_pexels", mock_search):
+        with pytest.raises(VideoFetchError):
+            fetch_clips(["AI tools"], str(tmp_path), command="money")

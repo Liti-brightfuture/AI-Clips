@@ -14,14 +14,17 @@ FALLBACK_KEYWORDS = {
 
 
 def _search_pexels(keyword: str, api_key: str) -> dict:
-    resp = requests.get(
-        PEXELS_SEARCH_URL,
-        headers={"Authorization": api_key},
-        params={"query": keyword, "per_page": 10, "orientation": "portrait"},
-        timeout=15,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        resp = requests.get(
+            PEXELS_SEARCH_URL,
+            headers={"Authorization": api_key},
+            params={"query": keyword, "per_page": 10, "orientation": "portrait"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.exceptions.RequestException as e:
+        raise VideoFetchError(f"Pexels search request failed for '{keyword}': {e}") from e
 
 
 def _select_best_video(videos: list) -> Optional[dict]:
@@ -36,21 +39,26 @@ def _select_best_video(videos: list) -> Optional[dict]:
 
 def _get_download_link(video: dict) -> str:
     files = video.get("video_files", [])
+    if not files:
+        raise VideoFetchError("Video has no downloadable files.")
     # Prefer hd quality
     for f in files:
         if f.get("quality") == "hd":
             return f["link"]
-    return files[0]["link"] if files else ""
+    return files[0]["link"]
 
 
 def _download_clip(url: str, output_path: str) -> str:
-    resp = requests.get(url, stream=True, timeout=60)
-    resp.raise_for_status()
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=8192):
-            f.write(chunk)
-    return output_path
+    try:
+        resp = requests.get(url, stream=True, timeout=60)
+        resp.raise_for_status()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                f.write(chunk)
+        return output_path
+    except requests.exceptions.RequestException as e:
+        raise VideoFetchError(f"Failed to download clip from '{url}': {e}") from e
 
 
 def fetch_clips(
@@ -82,6 +90,7 @@ def fetch_clips(
     raw_dir.mkdir(parents=True, exist_ok=True)
     fallback = FALLBACK_KEYWORDS.get(command, "technology")
     paths = []
+    fallback_result: Optional[dict] = None  # cached fallback to avoid redundant API calls
 
     for i, keyword in enumerate(keywords):
         result = _search_pexels(keyword, api_key)
@@ -89,9 +98,9 @@ def fetch_clips(
         video = _select_best_video(videos)
 
         if video is None:
-            # Try fallback
-            result = _search_pexels(fallback, api_key)
-            videos = result.get("videos", [])
+            if fallback_result is None:
+                fallback_result = _search_pexels(fallback, api_key)
+            videos = fallback_result.get("videos", [])
             video = _select_best_video(videos)
 
         if video is None:
