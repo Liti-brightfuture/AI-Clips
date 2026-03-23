@@ -29,7 +29,11 @@ ELEVENLABS_VOICE_ID: str = os.environ["ELEVENLABS_VOICE_ID"]
 PEXELS_API_KEY: str = os.environ["PEXELS_API_KEY"]
 TAVILY_API_KEY: str = os.environ["TAVILY_API_KEY"]
 GPT_RESEARCHER_PATH: str = os.environ["GPT_RESEARCHER_PATH"]
-ALLOWED_CHAT_ID: int = int(os.environ["ALLOWED_CHAT_ID"])
+try:
+    ALLOWED_CHAT_ID: int = int(os.environ["ALLOWED_CHAT_ID"])
+except ValueError:
+    print("[config] ALLOWED_CHAT_ID must be an integer.", file=sys.stderr)
+    sys.exit(1)
 
 # Validate GPT_RESEARCHER_PATH exists
 if not Path(GPT_RESEARCHER_PATH).is_dir():

@@ -56,6 +56,20 @@ def test_ffmpeg_missing_exits(monkeypatch, tmp_path):
     monkeypatch.setenv("GPT_RESEARCHER_PATH", str(tmp_path))
     if "config" in sys.modules:
         del sys.modules["config"]
-    # Just verify config imports without error when all vars present
-    import config
-    assert config.PEXELS_API_KEY == "px-test"
+
+    # Override the conftest autouse fixture: make ffmpeg check raise FileNotFoundError
+    import subprocess as _subprocess
+    original_run = _subprocess.run
+
+    def ffmpeg_missing(cmd, *args, **kwargs):
+        if isinstance(cmd, list) and "ffmpeg" in cmd:
+            raise FileNotFoundError("ffmpeg not found")
+        return original_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(_subprocess, "run", ffmpeg_missing)
+
+    try:
+        with pytest.raises(SystemExit):
+            import config
+    finally:
+        sys.modules.pop("config", None)
