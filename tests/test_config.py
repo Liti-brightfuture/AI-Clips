@@ -1,17 +1,6 @@
-import importlib
 import os
 import sys
 import pytest
-
-
-def reload_config(env_overrides: dict):
-    """Helper: set env vars and re-import config."""
-    for k, v in env_overrides.items():
-        os.environ[k] = v
-    if "config" in sys.modules:
-        del sys.modules["config"]
-    import config
-    return config
 
 
 FULL_ENV = {
@@ -32,9 +21,12 @@ def test_all_vars_present(tmp_path, monkeypatch):
     monkeypatch.setenv("GPT_RESEARCHER_PATH", str(tmp_path))
     if "config" in sys.modules:
         del sys.modules["config"]
-    import config
-    assert config.OPENAI_API_KEY == "sk-test"
-    assert config.ALLOWED_CHAT_ID == 999  # parsed as int
+    try:
+        import config
+        assert config.OPENAI_API_KEY == "sk-test"
+        assert config.ALLOWED_CHAT_ID == 999  # parsed as int
+    finally:
+        sys.modules.pop("config", None)
 
 
 def test_missing_var_exits(monkeypatch):

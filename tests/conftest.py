@@ -1,6 +1,5 @@
 # tests/conftest.py
 import subprocess
-from unittest.mock import patch
 import pytest
 
 
