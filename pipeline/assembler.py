@@ -28,6 +28,8 @@ def _get_clip_duration(path: str) -> float:
 
 
 def _build_concat_list(clips: List[str], clip_durations: dict, total_duration: float) -> List[str]:
+    if not clips:
+        raise AssembleError("No clips provided to concat list builder.")
     lines = []
     accumulated = 0.0
     i = 0
