@@ -48,6 +48,7 @@ def test_fallback_keyword_used_on_empty(tmp_path):
         paths = fetch_clips(["AI tools", "laptop", "typing"], str(tmp_path), command="money")
 
     assert len(paths) == 3
+    assert mock_search.call_count == 4  # 3 primary + 1 fallback (cached, not repeated)
 
 
 def test_raises_when_fallback_also_fails(tmp_path):

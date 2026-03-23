@@ -110,7 +110,6 @@ def fetch_clips(
 
         link = _get_download_link(video)
         out_path = str(raw_dir / f"clip_{i}.mp4")
-        _download_clip(link, out_path)
-        paths.append(out_path)
+        paths.append(_download_clip(link, out_path))
 
     return paths
