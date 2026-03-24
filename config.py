@@ -9,8 +9,8 @@ load_dotenv()
 REQUIRED_VARS = [
     "OPENAI_API_KEY",
     "TELEGRAM_BOT_TOKEN",
-    "ELEVENLABS_API_KEY",
-    "ELEVENLABS_VOICE_ID",
+    "OPENAI_VOICE_MONEY",
+    "OPENAI_VOICE_B2B",
     "PEXELS_API_KEY",
     "TAVILY_API_KEY",
     "GPT_RESEARCHER_PATH",
@@ -24,8 +24,8 @@ if missing:
 
 OPENAI_API_KEY: str = os.environ["OPENAI_API_KEY"]
 TELEGRAM_BOT_TOKEN: str = os.environ["TELEGRAM_BOT_TOKEN"]
-ELEVENLABS_API_KEY: str = os.environ["ELEVENLABS_API_KEY"]
-ELEVENLABS_VOICE_ID: str = os.environ["ELEVENLABS_VOICE_ID"]
+OPENAI_VOICE_MONEY: str = os.environ["OPENAI_VOICE_MONEY"]
+OPENAI_VOICE_B2B: str = os.environ["OPENAI_VOICE_B2B"]
 PEXELS_API_KEY: str = os.environ["PEXELS_API_KEY"]
 TAVILY_API_KEY: str = os.environ["TAVILY_API_KEY"]
 GPT_RESEARCHER_PATH: str = os.environ["GPT_RESEARCHER_PATH"]
@@ -56,4 +56,6 @@ except (FileNotFoundError, subprocess.CalledProcessError):
 BASE_DIR = Path(__file__).parent
 OUTPUT_DIR = BASE_DIR / "output" / "clips"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+SFX_DIR: Path = BASE_DIR / "assets" / "sfx"
+SFX_DIR.mkdir(parents=True, exist_ok=True)
 (BASE_DIR / "logs").mkdir(exist_ok=True)
