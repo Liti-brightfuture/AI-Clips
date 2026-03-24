@@ -139,7 +139,7 @@ async def process_job(job: dict) -> None:
 
         if _app:
             with open(final_path, "rb") as f:
-                await _app.bot.send_video(chat_id=chat_id, video=f, caption=caption)
+                await _app.bot.send_video(chat_id=chat_id, video=f, caption=caption, read_timeout=120, write_timeout=120)
 
     except FATAL_ERRORS as e:
         msg = ERROR_MESSAGES.get(type(e), str(e))
