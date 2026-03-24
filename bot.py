@@ -17,6 +17,8 @@ from pipeline.voice_generator import generate_voice
 from pipeline.video_fetcher import fetch_clips
 from pipeline.transcriber import transcribe
 from pipeline.assembler import assemble
+from pipeline.sfx_fetcher import get_sfx_cues
+from pipeline.assembler import get_audio_duration
 from pipeline.caption_generator import generate_caption
 from pipeline.exceptions import (
     ScriptError, VoiceError, VideoFetchError, TranscribeError, AssembleError, ResearchError
@@ -47,18 +49,20 @@ def _run_money_pipeline_sync(topic: str, job_dir: Path) -> tuple:
     keywords = script_data["pexels_keywords"]
 
     voice_path = str(job_dir / "voice.mp3")
-    warning = generate_voice(script, voice_path, DB_PATH)
+    warning = generate_voice(script, voice_path, voice_name=config.OPENAI_VOICE_MONEY)
 
     raw_clips = fetch_clips(keywords, str(job_dir), command="money")
 
-    # TranscribeError is non-fatal — caught here, assembly continues without subs
     try:
-        srt_path = transcribe(voice_path, str(job_dir))
+        ass_path, word_timings = transcribe(voice_path, str(job_dir), script_data.get("key_words", []))
+        audio_duration = get_audio_duration(voice_path)
+        sfx_cues = get_sfx_cues(word_timings, script_data.get("key_words", []), audio_duration)
     except TranscribeError:
-        srt_path = None
+        ass_path = None
+        sfx_cues = []
 
     final_path = job_dir / "final.mp4"
-    assemble(raw_clips, voice_path, srt_path, str(final_path))
+    assemble(raw_clips, voice_path, ass_path, sfx_cues, str(final_path))
 
     caption = generate_caption(script_data, command="money")
     return final_path, caption, warning
@@ -75,17 +79,20 @@ def _run_b2b_pipeline_sync(topic: str, job_dir: Path) -> tuple:
     keywords = script_data["pexels_keywords"]
 
     voice_path = str(job_dir / "voice.mp3")
-    warning = generate_voice(script, voice_path, DB_PATH)
+    warning = generate_voice(script, voice_path, voice_name=config.OPENAI_VOICE_B2B)
 
     raw_clips = fetch_clips(keywords, str(job_dir), command="b2b")
 
     try:
-        srt_path = transcribe(voice_path, str(job_dir))
+        ass_path, word_timings = transcribe(voice_path, str(job_dir), script_data.get("key_words", []))
+        audio_duration = get_audio_duration(voice_path)
+        sfx_cues = get_sfx_cues(word_timings, script_data.get("key_words", []), audio_duration)
     except TranscribeError:
-        srt_path = None
+        ass_path = None
+        sfx_cues = []
 
     final_path = job_dir / "final.mp4"
-    assemble(raw_clips, voice_path, srt_path, str(final_path))
+    assemble(raw_clips, voice_path, ass_path, sfx_cues, str(final_path))
 
     caption = generate_caption(script_data, command="b2b")
     return final_path, caption, warning
