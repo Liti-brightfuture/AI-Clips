@@ -9,6 +9,7 @@ MOCK_MONEY_RESPONSE = {
     "pexels_keywords": ["artificial intelligence", "laptop typing", "productivity"],
     "hook_line": "AI is changing everything.",
     "tool_benefit": "Jasper cuts your writing time from hours to minutes.",
+    "key_words": ["free", "4 hours", "4 minutes", "Jasper", "trial"],
 }
 
 MOCK_B2B_RESPONSE = {
@@ -16,6 +17,7 @@ MOCK_B2B_RESPONSE = {
     "pexels_keywords": ["business meeting", "CRM software", "startup office"],
     "hook_line": "HubSpot costs $800/month.",
     "data_point": "Monday.com costs 75% less than HubSpot for teams under 50.",
+    "key_words": ["$800", "$200", "75%", "HubSpot", "Monday.com"],
 }
 
 
@@ -68,3 +70,30 @@ def test_missing_field_raises_script_error():
     mock_client = make_mock_openai(incomplete)
     with pytest.raises(ScriptError):
         generate_script("test topic", command="money", client=mock_client)
+
+
+def test_missing_key_words_raises_script_error():
+    from pipeline.script_generator import generate_script
+    from pipeline.exceptions import ScriptError
+    incomplete = {**MOCK_MONEY_RESPONSE}
+    del incomplete["key_words"]
+    mock_client = make_mock_openai(incomplete)
+    with pytest.raises(ScriptError):
+        generate_script("test topic", command="money", client=mock_client)
+
+
+def test_key_words_too_few_raises_script_error():
+    from pipeline.script_generator import generate_script
+    from pipeline.exceptions import ScriptError
+    bad = {**MOCK_MONEY_RESPONSE, "key_words": ["only_one"]}
+    mock_client = make_mock_openai(bad)
+    with pytest.raises(ScriptError, match="key_words"):
+        generate_script("test topic", command="money", client=mock_client)
+
+
+def test_generate_money_script_has_key_words():
+    from pipeline.script_generator import generate_script
+    mock_client = make_mock_openai(MOCK_MONEY_RESPONSE)
+    result = generate_script("Jasper AI review 2026", command="money", client=mock_client)
+    assert "key_words" in result
+    assert 5 <= len(result["key_words"]) <= 8

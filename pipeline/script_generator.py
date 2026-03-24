@@ -12,8 +12,8 @@ Also return 3 Pexels search keywords relevant to the topic (for stock footage).
 Return the first sentence of the script as hook_line.
 Return one sentence describing the tool's main benefit as tool_benefit.
 Target: freelancers and students 18-30. Tone: confident, fast, slightly irreverent. English only.
-Return ONLY valid JSON, no markdown, no code fences:
-{{"script": string, "pexels_keywords": [string, string, string], "hook_line": string, "tool_benefit": string}}"""
+The script field must contain ONLY the spoken words. Do NOT include any structural labels, timestamps, or markers like 'Hook', 'Problem', 'Demo', etc.
+Return 5-8 words or short phrases from the script as key_words — these will be highlighted yellow on screen. Pick numbers, prices, the tool name, power words (free, instant, best), and the CTA trigger word."""
 
 B2B_SYSTEM_PROMPT = """You are a B2B SaaS reviewer creating short-form video scripts.
 Use this research data (may be truncated): {research}
@@ -25,11 +25,51 @@ Also return 3 Pexels search keywords relevant to the topic (for stock footage).
 Return the first sentence of the script as hook_line.
 Return one real data point (stat, price, or rating) as data_point.
 Target: business owners and managers 28-45. Tone: authoritative, data-driven, direct. English only.
-Return ONLY valid JSON, no markdown, no code fences:
-{{"script": string, "pexels_keywords": [string, string, string], "hook_line": string, "data_point": string}}"""
+The script field must contain ONLY the spoken words. Do NOT include any structural labels, timestamps, or markers like 'Hook', 'Problem', 'Solution', 'Data point', 'CTA', etc.
+Return 5-8 words or short phrases from the script as key_words — highlighted yellow on screen. Pick stats, prices, product names, and decisive words."""
 
-REQUIRED_MONEY_FIELDS = {"script", "pexels_keywords", "hook_line", "tool_benefit"}
-REQUIRED_B2B_FIELDS = {"script", "pexels_keywords", "hook_line", "data_point"}
+MONEY_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "money_script",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "script": {"type": "string"},
+                "pexels_keywords": {"type": "array", "items": {"type": "string"}},
+                "hook_line": {"type": "string"},
+                "tool_benefit": {"type": "string"},
+                "key_words": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["script", "pexels_keywords", "hook_line", "tool_benefit", "key_words"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+B2B_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "b2b_script",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "script": {"type": "string"},
+                "pexels_keywords": {"type": "array", "items": {"type": "string"}},
+                "hook_line": {"type": "string"},
+                "data_point": {"type": "string"},
+                "key_words": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["script", "pexels_keywords", "hook_line", "data_point", "key_words"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+REQUIRED_MONEY_FIELDS = {"script", "pexels_keywords", "hook_line", "tool_benefit", "key_words"}
+REQUIRED_B2B_FIELDS = {"script", "pexels_keywords", "hook_line", "data_point", "key_words"}
 
 
 def generate_script(
@@ -64,16 +104,18 @@ def generate_script(
     if command == "money":
         prompt = MONEY_SYSTEM_PROMPT.format(topic=topic)
         required_fields = REQUIRED_MONEY_FIELDS
+        schema = MONEY_SCHEMA
     else:
         research = research_text or "No research data available."
         prompt = B2B_SYSTEM_PROMPT.format(topic=topic, research=research)
         required_fields = REQUIRED_B2B_FIELDS
+        schema = B2B_SCHEMA
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
+            response_format=schema,
         )
         raw = response.choices[0].message.content
     except Exception as e:
@@ -95,5 +137,13 @@ def generate_script(
         or not all(isinstance(k, str) and k for k in keywords)
     ):
         raise ScriptError("pexels_keywords must be a list of 3 non-empty strings")
+
+    key_words = data.get("key_words")
+    if (
+        not isinstance(key_words, list)
+        or not (5 <= len(key_words) <= 8)
+        or not all(isinstance(k, str) and k for k in key_words)
+    ):
+        raise ScriptError("key_words must be a list of 5-8 non-empty strings")
 
     return data
