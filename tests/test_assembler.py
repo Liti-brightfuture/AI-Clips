@@ -22,7 +22,7 @@ def test_assemble_calls_ffmpeg(tmp_path):
         (tmp_path / "muxed.mp4").write_bytes(b"x")
         (tmp_path / "final.mp4").write_bytes(b"x")
 
-        assemble(raw_clips, str(audio), None, str(output), work_dir=str(tmp_path))
+        assemble(raw_clips, str(audio), None, [], str(output), work_dir=str(tmp_path))
 
     assert mock_run.called
 
@@ -40,9 +40,8 @@ def test_assemble_without_subs_skips_subtitle_filter(tmp_path):
 def test_assemble_with_subs_includes_subtitle_filter(tmp_path):
     from pipeline.assembler import _build_encode_cmd
 
-    srt = str(tmp_path / "subs.srt")
     output = str(tmp_path / "final.mp4")
-    cmd = _build_encode_cmd(str(tmp_path / "muxed.mp4"), srt, output)
+    cmd = _build_encode_cmd(str(tmp_path / "muxed.mp4"), "subs.ass", output)
     cmd_str = " ".join(cmd)
     assert "subtitles" in cmd_str
     assert "libx264" in cmd_str

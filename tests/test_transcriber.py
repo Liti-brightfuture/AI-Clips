@@ -3,7 +3,31 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
-MOCK_WHISPER_RESULT = {
+MOCK_WHISPER_RESULT_WORDS = {
+    "segments": [
+        {
+            "start": 0.0, "end": 2.5, "text": " AI is changing everything.",
+            "words": [
+                {"word": "AI", "start": 0.0, "end": 0.3},
+                {"word": "is", "start": 0.3, "end": 0.5},
+                {"word": "changing", "start": 0.5, "end": 0.9},
+                {"word": "everything.", "start": 0.9, "end": 1.4},
+            ],
+        },
+        {
+            "start": 2.5, "end": 6.0, "text": " Most people waste hours writing.",
+            "words": [
+                {"word": "Most", "start": 2.5, "end": 2.8},
+                {"word": "people", "start": 2.8, "end": 3.1},
+                {"word": "waste", "start": 3.1, "end": 3.5},
+                {"word": "hours", "start": 3.5, "end": 3.9},
+                {"word": "writing.", "start": 3.9, "end": 4.4},
+            ],
+        },
+    ]
+}
+
+MOCK_WHISPER_RESULT_NO_WORDS = {
     "segments": [
         {"start": 0.0, "end": 2.5, "text": " AI is changing everything."},
         {"start": 2.5, "end": 6.0, "text": " Most people waste hours writing."},
@@ -11,35 +35,51 @@ MOCK_WHISPER_RESULT = {
 }
 
 
-def test_transcribe_returns_srt_path(tmp_path):
+def test_transcribe_returns_ass_path(tmp_path):
     from pipeline.transcriber import transcribe
 
     mock_model = MagicMock()
-    mock_model.transcribe.return_value = MOCK_WHISPER_RESULT
+    mock_model.transcribe.return_value = MOCK_WHISPER_RESULT_WORDS
 
     with patch("pipeline.transcriber._load_model", return_value=mock_model):
-        srt_path = transcribe(str(tmp_path / "voice.mp3"), str(tmp_path))
+        ass_path, word_timings = transcribe(str(tmp_path / "voice.mp3"), str(tmp_path))
 
-    assert srt_path is not None
-    assert Path(srt_path).exists()
-    content = Path(srt_path).read_text()
-    assert "AI is changing everything." in content
-    assert "-->" in content
+    assert ass_path.endswith(".ass")
+    assert Path(ass_path).exists()
+    assert isinstance(word_timings, list)
+    assert len(word_timings) > 0
+    assert all("word" in w and "start" in w and "end" in w for w in word_timings)
 
 
-def test_srt_format_is_valid(tmp_path):
+def test_ass_format_is_valid(tmp_path):
     from pipeline.transcriber import transcribe
 
     mock_model = MagicMock()
-    mock_model.transcribe.return_value = MOCK_WHISPER_RESULT
+    mock_model.transcribe.return_value = MOCK_WHISPER_RESULT_WORDS
 
     with patch("pipeline.transcriber._load_model", return_value=mock_model):
-        srt_path = transcribe(str(tmp_path / "voice.mp3"), str(tmp_path))
+        ass_path, _ = transcribe(str(tmp_path / "voice.mp3"), str(tmp_path))
 
-    lines = Path(srt_path).read_text().strip().split("\n")
-    assert lines[0] == "1"              # index
-    assert "-->" in lines[1]            # timestamp line
-    assert "00:00:00,000" in lines[1]   # start time
+    content = Path(ass_path).read_text()
+    assert "[Script Info]" in content
+    assert "Dialogue:" in content
+    assert "AI" in content
+
+
+def test_fallback_to_segment_level_when_no_words(tmp_path):
+    from pipeline.transcriber import transcribe
+
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MOCK_WHISPER_RESULT_NO_WORDS
+
+    with patch("pipeline.transcriber._load_model", return_value=mock_model):
+        ass_path, word_timings = transcribe(str(tmp_path / "voice.mp3"), str(tmp_path))
+
+    # Fallback: one entry per segment, same schema
+    assert len(word_timings) == 2
+    assert all("word" in w and "start" in w and "end" in w for w in word_timings)
+    assert word_timings[0]["start"] == 0.0
+    assert word_timings[1]["start"] == 2.5
 
 
 def test_raises_transcribe_error_on_failure(tmp_path):
