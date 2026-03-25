@@ -31,6 +31,31 @@ def init_db(db_path: str = DB_PATH) -> None:
             chars_used INTEGER DEFAULT 0
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS briefs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            tool_slug       TEXT NOT NULL,
+            tool_name       TEXT NOT NULL,
+            topic           TEXT NOT NULL,
+            script_json     TEXT NOT NULL DEFAULT '{}',
+            shot_list_json  TEXT NOT NULL DEFAULT '[]',
+            voice           TEXT NOT NULL DEFAULT 'echo',
+            chat_id         INTEGER NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'pending',
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tool_assets (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            tool_slug   TEXT NOT NULL,
+            file_path   TEXT NOT NULL,
+            asset_type  TEXT NOT NULL,
+            scene_hint  INTEGER,
+            brief_id    INTEGER REFERENCES briefs(id),
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -125,3 +150,50 @@ def get_done_jobs(db_path: str = DB_PATH):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def add_brief_job(topic: str, chat_id: int, db_path: str = DB_PATH) -> str:
+    """Insert a 'brief' job and return job_id (UUID string)."""
+    job_id = str(uuid4())
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO jobs (job_id, command, topic, chat_id) VALUES (?, ?, ?, ?)",
+        (job_id, "brief", topic, chat_id),
+    )
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def add_produce_job(brief_id: int, chat_id: int, db_path: str = DB_PATH) -> str:
+    """Insert a 'produce' job and return job_id (UUID string)."""
+    job_id = str(uuid4())
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO jobs (job_id, command, topic, chat_id) VALUES (?, ?, ?, ?)",
+        (job_id, "produce", f"brief:{brief_id}", chat_id),
+    )
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def get_brief(brief_id: int, db_path: str = DB_PATH) -> Optional[Dict[str, Any]]:
+    """Fetch a brief by integer ID."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT * FROM briefs WHERE id=?", (brief_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_pending_brief_for_chat(chat_id: int, db_path: str = DB_PATH) -> Optional[Dict[str, Any]]:
+    """Return most recent pending brief for a chat_id, or None."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT * FROM briefs WHERE chat_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1",
+        (chat_id,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None

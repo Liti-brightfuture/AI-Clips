@@ -70,3 +70,56 @@ def test_get_done_jobs(db_path):
     jobs = get_done_jobs(db_path)
     assert len(jobs) == 1
     assert jobs[0]["output_path"] == "output/clips/account1/j1/final.mp4"
+
+
+import tempfile
+import os
+
+
+def make_test_db():
+    """Return path to a fresh temp db."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    return path
+
+
+def test_init_db_creates_briefs_and_tool_assets_tables():
+    from queue_manager import init_db
+    db = make_test_db()
+    try:
+        init_db(db)
+        import sqlite3
+        conn = sqlite3.connect(db)
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        assert "briefs" in tables
+        assert "tool_assets" in tables
+        conn.close()
+    finally:
+        os.unlink(db)
+
+
+def test_add_brief_job_returns_uuid_string():
+    from queue_manager import init_db, add_brief_job
+    db = make_test_db()
+    try:
+        init_db(db)
+        job_id = add_brief_job("Jasper AI review", chat_id=12345, db_path=db)
+        assert isinstance(job_id, str)
+        assert len(job_id) == 36  # UUID format
+    finally:
+        os.unlink(db)
+
+
+def test_add_produce_job_stores_brief_id_in_topic():
+    from queue_manager import init_db, add_produce_job, get_next_pending_job
+    db = make_test_db()
+    try:
+        init_db(db)
+        job_id = add_produce_job(brief_id=42, chat_id=12345, db_path=db)
+        job = get_next_pending_job(db)
+        assert job["command"] == "produce"
+        assert job["topic"] == "brief:42"
+    finally:
+        os.unlink(db)
