@@ -97,3 +97,32 @@ def test_list_tools_returns_counts(tmp_path):
     tool_dict = {slug: count for slug, count in tools}
     assert tool_dict["jasper_ai"] == 2
     assert tool_dict["copy_ai"] == 1
+
+
+def test_get_assets_for_brief_returns_ordered_by_scene_hint(tmp_path):
+    from pipeline.asset_manager import store_asset, get_assets_for_brief
+    db = make_db(tmp_path)
+    assets_root = tmp_path / "assets" / "tools"
+    assets_root.mkdir(parents=True)
+
+    # Insert a brief row so foreign key constraint is satisfied (if enforced)
+    import sqlite3
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT INTO briefs (tool_slug, tool_name, topic, script_json, shot_list_json, voice, chat_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("jasper_ai", "Jasper AI", "Jasper AI review", "{}", "[]", "echo", 12345),
+    )
+    brief_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.commit()
+    conn.close()
+
+    store_asset("jasper_ai", b"scene3", ".png", "screenshot", 3, brief_id, db, str(assets_root))
+    store_asset("jasper_ai", b"scene1", ".png", "screenshot", 1, brief_id, db, str(assets_root))
+    store_asset("jasper_ai", b"other", ".png", "screenshot", None, None, db, str(assets_root))  # no brief_id
+
+    assets = get_assets_for_brief(brief_id, db)
+    assert len(assets) == 2
+    assert all(a.brief_id == brief_id for a in assets)
+    assert assets[0].scene_hint == 1
+    assert assets[1].scene_hint == 3
