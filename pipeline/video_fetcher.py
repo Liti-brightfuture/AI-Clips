@@ -11,7 +11,8 @@ FALLBACK_KEYWORDS = {
     "money": "technology",
     "b2b": "business office",
 }
-EXTRA_FALLBACKS = ["laptop", "office work"]
+EXTRA_FALLBACKS = ["workspace", "office work"]
+CLIP_TARGET = 25  # minimum unique clips to collect per video
 
 
 def _search_pexels(keyword: str, api_key: str, per_page: int = 9) -> dict:
@@ -26,15 +27,6 @@ def _search_pexels(keyword: str, api_key: str, per_page: int = 9) -> dict:
         return resp.json()
     except requests.exceptions.RequestException as e:
         raise VideoFetchError(f"Pexels search request failed for '{keyword}': {e}") from e
-
-
-def _select_best_video(videos: list) -> Optional[dict]:
-    if not videos:
-        return None
-    for v in videos:
-        if v.get("width", 0) >= 1080:
-            return v
-    return videos[0]
 
 
 def _select_multiple_videos(videos: list, n: int) -> list:
@@ -124,8 +116,8 @@ def fetch_clips(
     for keyword in keywords:
         _collect_from_keyword(keyword)
 
-    # Supplement with fallback keywords until we have at least 25 unique clips
-    TARGET = 25
+    # Supplement with fallback keywords until we have at least CLIP_TARGET unique clips
+    TARGET = CLIP_TARGET
     for fallback in all_fallbacks:
         if len(paths) >= TARGET:
             break

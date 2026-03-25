@@ -16,6 +16,16 @@ def make_video(width=1920, duration=15, link="http://example.com/clip.mp4"):
     }
 
 
+def make_video_with_id(vid_id: int, width=1920, link=None):
+    return {
+        "id": vid_id,
+        "width": width,
+        "duration": 15,
+        "video_files": [{"link": link or f"http://example.com/clip_{vid_id}.mp4",
+                          "width": width, "height": 1080, "quality": "hd"}],
+    }
+
+
 def test_fetch_clips_returns_three_files(tmp_path):
     from pipeline.video_fetcher import fetch_clips
     keywords = ["AI tools", "laptop", "typing"]
@@ -69,14 +79,18 @@ def test_raises_when_fallback_also_fails(tmp_path):
             fetch_clips(["bad keyword"], str(tmp_path), command="money")
 
 
-def test_selects_video_with_width_gte_1080(tmp_path):
-    from pipeline.video_fetcher import _select_best_video
+def test_selects_multiple_videos_prefers_high_res(tmp_path):
+    from pipeline.video_fetcher import _select_multiple_videos
     videos = [
         make_video(width=640),
         make_video(width=1920, link="http://example.com/hd.mp4"),
+        make_video(width=1280, link="http://example.com/hd2.mp4"),
     ]
-    selected = _select_best_video(videos)
-    assert selected["video_files"][0]["link"] == "http://example.com/hd.mp4"
+    result = _select_multiple_videos(videos, n=2)
+    # High-res videos (>=1080) should come first
+    assert len(result) == 2
+    assert result[0]["video_files"][0]["link"] == "http://example.com/hd.mp4"
+    assert result[1]["video_files"][0]["link"] == "http://example.com/hd2.mp4"
 
 
 def test_raises_on_empty_video_files(tmp_path):
@@ -89,16 +103,6 @@ def test_raises_on_empty_video_files(tmp_path):
     with patch("pipeline.video_fetcher._search_pexels", mock_search):
         with pytest.raises(VideoFetchError):
             fetch_clips(["AI tools"], str(tmp_path), command="money")
-
-
-def make_video_with_id(vid_id: int, width=1920, link=None):
-    return {
-        "id": vid_id,
-        "width": width,
-        "duration": 15,
-        "video_files": [{"link": link or f"http://example.com/clip_{vid_id}.mp4",
-                          "width": width, "height": 1080, "quality": "hd"}],
-    }
 
 
 def test_fetch_clips_returns_up_to_27_unique_files_when_all_keywords_full(tmp_path):
