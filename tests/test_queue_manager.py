@@ -93,9 +93,9 @@ def test_init_db_creates_briefs_and_tool_assets_tables():
         tables = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()}
+        conn.close()
         assert "briefs" in tables
         assert "tool_assets" in tables
-        conn.close()
     finally:
         os.unlink(db)
 
