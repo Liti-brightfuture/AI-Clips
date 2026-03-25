@@ -83,7 +83,7 @@ def test_raises_on_empty_video_files(tmp_path):
     from pipeline.video_fetcher import fetch_clips
     from pipeline.exceptions import VideoFetchError
 
-    empty_files_video = {"width": 1920, "duration": 15, "video_files": []}
+    empty_files_video = {"id": 999, "width": 1920, "duration": 15, "video_files": []}
     mock_search = MagicMock(return_value=make_pexels_response([empty_files_video]))
 
     with patch("pipeline.video_fetcher._search_pexels", mock_search):
