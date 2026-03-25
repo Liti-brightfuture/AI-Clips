@@ -56,3 +56,24 @@ def test_concat_list_cycles_clips(tmp_path):
     # Should cycle: clip_0(10), clip_1(12), clip_0(10) = 32s, need 3 more → clip_1
     assert len(lines) >= 3
     assert all("file" in line for line in lines if line.strip())
+
+
+def test_build_concat_list_shuffles_clips():
+    """Verify clips are shuffled before cycling — not in fixed input order."""
+    from pipeline.assembler import _build_concat_list
+    import random
+
+    clips = [f"/clip_{i}.mp4" for i in range(10)]
+    durations = {c: 2.5 for c in clips}
+    total_duration = 30.0  # 12 slots, cycles through more than 10 clips
+
+    # Run 20 times; at least one run must produce an order different from input
+    orders_seen = set()
+    for _ in range(20):
+        random.seed(None)  # ensure true randomness
+        result = _build_concat_list(clips, durations, total_duration)
+        # Capture first-pass order (first 10 entries)
+        orders_seen.add(tuple(result[:10]))
+
+    # Should have seen more than one ordering (probability of always same: (1/10!)^20 ≈ 0)
+    assert len(orders_seen) > 1, "Clips were never shuffled — always same order"

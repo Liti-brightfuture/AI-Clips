@@ -33,16 +33,25 @@ def _get_clip_duration(path: str) -> float:
 
 
 def _build_concat_list(clips: List[str], clip_durations: dict, total_duration: float) -> List[str]:
+    import random
     if not clips:
         raise AssembleError("No clips provided to concat list builder.")
+    shuffled = list(clips)
+    random.shuffle(shuffled)
     lines = []
     accumulated = 0.0
-    i = 0
+    pool = list(shuffled)
+    pool_iter = iter(pool)
     while accumulated < total_duration:
-        clip = clips[i % len(clips)]
+        clip = next(pool_iter, None)
+        if clip is None:
+            # Pool exhausted — re-shuffle and restart
+            pool = list(shuffled)
+            random.shuffle(pool)
+            pool_iter = iter(pool)
+            clip = next(pool_iter)
         lines.append(f"file '{clip}'")
         accumulated += clip_durations[clip]
-        i += 1
     return lines
 
 
