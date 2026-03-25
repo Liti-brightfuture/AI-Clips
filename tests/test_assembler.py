@@ -53,7 +53,7 @@ def test_concat_list_cycles_clips(tmp_path):
     clips = ["clip_0.mp4", "clip_1.mp4"]
     clip_durations = {"clip_0.mp4": 10.0, "clip_1.mp4": 12.0}
     lines = _build_concat_list(clips, clip_durations, total_duration=35.0)
-    # Should cycle: clip_0(10), clip_1(12), clip_0(10) = 32s, need 3 more → clip_1
+    # Clips are shuffled but should still cycle until total_duration is filled
     assert len(lines) >= 3
     assert all("file" in line for line in lines if line.strip())
 
