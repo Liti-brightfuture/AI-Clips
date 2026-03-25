@@ -34,8 +34,8 @@ def init_db(db_path: str = DB_PATH) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS briefs (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            tool_slug       TEXT NOT NULL,
             tool_name       TEXT NOT NULL,
+            tool_slug       TEXT NOT NULL,
             topic           TEXT NOT NULL,
             script_json     TEXT NOT NULL DEFAULT '{}',
             shot_list_json  TEXT NOT NULL DEFAULT '[]',
