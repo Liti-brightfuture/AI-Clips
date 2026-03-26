@@ -58,4 +58,6 @@ OUTPUT_DIR = BASE_DIR / "output" / "clips"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SFX_DIR: Path = BASE_DIR / "assets" / "sfx"
 SFX_DIR.mkdir(parents=True, exist_ok=True)
+TOOL_ASSETS_DIR: Path = BASE_DIR / "assets" / "tools"
+TOOL_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 (BASE_DIR / "logs").mkdir(exist_ok=True)
