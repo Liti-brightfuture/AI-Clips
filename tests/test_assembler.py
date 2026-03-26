@@ -77,3 +77,41 @@ def test_build_concat_list_shuffles_clips():
 
     # Should have seen more than one ordering (probability of always same: (1/10!)^20 ≈ 0)
     assert len(orders_seen) > 1, "Clips were never shuffled — always same order"
+
+
+def test_build_slot_timeline_uses_user_assets_at_correct_scenes():
+    from pipeline.assembler import build_slot_timeline
+    from pipeline.asset_manager import AssetRecord
+
+    shot_list_data = [
+        {"scene": 1, "duration": "3s"},
+        {"scene": 2, "duration": "5s"},
+        {"scene": 3, "duration": "3s"},
+    ]
+    asset_records = [
+        AssetRecord(id=1, tool_slug="jasper_ai", file_path="/user/scene1.png",
+                    asset_type="screenshot", scene_hint=1, brief_id=1, created_at=None),
+    ]
+    pexels_clips = [f"/pexels/clip_{i}.mp4" for i in range(20)]
+
+    slots = build_slot_timeline(shot_list_data, asset_records, pexels_clips)
+
+    # Scene 1 = 3s = 2 slots (ceil(3/2.5)=2); all should use user asset
+    assert slots[0].source == "/user/scene1.png"
+    assert slots[0].is_user_asset is True
+    assert slots[1].source == "/user/scene1.png"
+    assert slots[1].is_user_asset is True
+    # Scene 2 = 5s = 2 slots; no user asset → pexels
+    assert slots[2].is_user_asset is False
+    assert slots[3].is_user_asset is False
+
+
+def test_build_slot_timeline_no_pexels_repeat_until_pool_exhausted():
+    from pipeline.assembler import build_slot_timeline
+
+    shot_list_data = [{"scene": i+1, "duration": "3s"} for i in range(5)]  # 5 scenes × 2 slots = 10 slots
+    pexels_clips = [f"/pexels/clip_{i}.mp4" for i in range(5)]
+    slots = build_slot_timeline(shot_list_data, [], pexels_clips)
+    # First 5 slots should use each pexels clip exactly once (no repeat before pool exhausted)
+    first_5_sources = [s.source for s in slots[:5]]
+    assert len(set(first_5_sources)) == 5  # all unique
