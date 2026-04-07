@@ -196,19 +196,25 @@ def generate_brief(
 
 def format_brief_message(result: BriefResult) -> str:
     """Format a BriefResult into a Telegram-ready text message."""
+    bid = result.brief_id
     lines = [
-        f"📋 Brief #BR{result.brief_id} — {result.topic}",
+        f"📋 Brief #BR{bid} — {result.topic}",
         f"Tool: {result.tool_name}",
+        "",
+        "── HOW IT WORKS ──────────────────",
+        f"1️⃣  Capture each scene below (screenshot or screen recording)",
+        f"2️⃣  Send the file here with caption:  BR{bid} scene <N>",
+        f"3️⃣  When all scenes uploaded → /produce BR{bid}",
+        "──────────────────────────────────",
         "",
     ]
     for s in result.shot_list:
         icon = "📸" if s.type == "screenshot" else "🎬"
         lines.append(f"Scene {s.scene} ({s.duration}) {icon} {s.type.upper()}")
-        lines.append(f"→ {s.capture}")
-        lines.append(f"→ Focus: {s.focus}")
-        lines.append(f"→ Text: {s.visible_text}")
+        lines.append(f"  What: {s.capture}")
+        lines.append(f"  Focus: {s.focus}")
+        lines.append(f"  Visible text: {s.visible_text}")
+        lines.append(f"  ↑ caption: BR{bid} scene {s.scene}")
         lines.append("")
-    lines.append(f"📤 Send files with caption BR{result.brief_id}")
-    lines.append(f"(or just send — I'll auto-assign to this brief)")
-    lines.append(f"▶️ When ready: /produce BR{result.brief_id}")
+    lines.append(f"▶️  Done filming?  /produce BR{bid}")
     return "\n".join(lines)
